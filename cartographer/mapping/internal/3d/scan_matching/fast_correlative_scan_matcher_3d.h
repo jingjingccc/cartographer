@@ -137,7 +137,7 @@ class FastCorrelativeScanMatcher3D {
   Candidate3D BranchAndBound(const SearchParameters& search_parameters,
                              const std::vector<DiscreteScan3D>& discrete_scans,
                              const std::vector<Candidate3D>& candidates,
-                             int candidate_depth, float min_score) const;
+                             int candidate_depth, float min_score, std::tuple<int, float>& best) const;
   transform::Rigid3f GetPoseFromCandidate(
       const std::vector<DiscreteScan3D>& discrete_scans,
       const Candidate3D& candidate) const;

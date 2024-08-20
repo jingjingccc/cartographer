@@ -184,9 +184,14 @@ FastCorrelativeScanMatcher3D::MatchWithSearchParameters(
   const std::vector<Candidate3D> lowest_resolution_candidates =
       ComputeLowestResolutionCandidates(search_parameters, discrete_scans);
 
+  std::tuple<int, float> best(10, 0);
   const Candidate3D best_candidate = BranchAndBound(
       search_parameters, discrete_scans, lowest_resolution_candidates,
-      precomputation_grid_stack_->max_depth(), min_score);
+      precomputation_grid_stack_->max_depth(), min_score, best);
+  // en add
+  if (std::get<0>(best) != 10)
+    LOG(WARNING) << "deepest: " << std::get<0>(best) << " score: " << std::get<1>(best);
+
   if (best_candidate.score > min_score) {
     return absl::make_unique<Result>(Result{
         best_candidate.score,
@@ -243,6 +248,14 @@ DiscreteScan3D FastCorrelativeScanMatcher3D::DiscretizeScan(
   return DiscreteScan3D{pose, cell_indices_per_depth, rotational_score};
 }
 
+// en add
+struct comp {
+  template<typename T>
+  bool operator()(const T &l, const T &r) const {
+    return l.first > r.first;
+  }
+};
+
 std::vector<DiscreteScan3D> FastCorrelativeScanMatcher3D::GenerateDiscreteScans(
     const FastCorrelativeScanMatcher3D::SearchParameters& search_parameters,
     const sensor::PointCloud& point_cloud,
@@ -250,6 +263,10 @@ std::vector<DiscreteScan3D> FastCorrelativeScanMatcher3D::GenerateDiscreteScans(
     const Eigen::Quaterniond& gravity_alignment,
     const transform::Rigid3f& global_node_pose,
     const transform::Rigid3f& global_submap_pose) const {
+  // en add
+  std::multiset<std::pair<float, std::vector<DiscreteScan3D>>, comp> cand_set;
+  int count = 0;
+
   std::vector<DiscreteScan3D> result;
   // We set this value to something on the order of resolution to make sure that
   // the std::acos() below is defined.
@@ -275,10 +292,17 @@ std::vector<DiscreteScan3D> FastCorrelativeScanMatcher3D::GenerateDiscreteScans(
       transform::GetYaw(node_to_submap.rotation() *
                         gravity_alignment.inverse().cast<float>()),
       angles);
+  double best_score = 0;
   for (size_t i = 0; i != angles.size(); ++i) {
+    // en add
+    if (scores[i] > best_score)
+      best_score = scores[i];
+    std::vector<DiscreteScan3D> temp;
+
     if (scores[i] < options_.min_rotational_score()) {
       continue;
     }
+    count++;
     const Eigen::Vector3f angle_axis(0.f, 0.f, angles[i]);
     // It's important to apply the 'angle_axis' rotation between the translation
     // and rotation of the 'initial_pose', so that the rotation is around the
@@ -288,9 +312,34 @@ std::vector<DiscreteScan3D> FastCorrelativeScanMatcher3D::GenerateDiscreteScans(
         global_submap_pose.rotation().inverse() *
             transform::AngleAxisVectorToRotationQuaternion(angle_axis) *
             global_node_pose.rotation());
-    result.push_back(
+    // en add
+    temp.push_back(
         DiscretizeScan(search_parameters, point_cloud, pose, scores[i]));
+    std::pair<float, std::vector<DiscreteScan3D>> temp_pair(scores[i], temp);
+    cand_set.insert(temp_pair);
+    result.insert(
+        result.end(),
+        std::make_move_iterator(temp.begin()),
+        std::make_move_iterator(temp.end()));
+
+    //result.push_back(
+    //    DiscretizeScan(search_parameters, point_cloud, pose, scores[i]));
   }
+  // en add
+  if (best_score >= options_.min_rotational_score()){
+    LOG(WARNING) << "amgles best score: " << best_score << " count: " << " search angle: " << search_parameters.angular_search_window;
+  }
+  if (search_parameters.angular_search_window==M_PI && cand_set.size()>=50) {
+    result.clear();
+    int n = 0;
+    for (const auto& pair : cand_set) {
+      result.insert(result.end(), pair.second.begin(), pair.second.end());
+      n++;
+      if (n >= 50)
+        break;
+    }
+  }
+
   return result;
 }
 
@@ -378,12 +427,23 @@ Candidate3D FastCorrelativeScanMatcher3D::BranchAndBound(
     const FastCorrelativeScanMatcher3D::SearchParameters& search_parameters,
     const std::vector<DiscreteScan3D>& discrete_scans,
     const std::vector<Candidate3D>& candidates, const int candidate_depth,
-    float min_score) const {
+    float min_score, std::tuple<int, float>& best) const {
   if (candidate_depth == 0) {
     for (const Candidate3D& candidate : candidates) {
+      // en add
+      if (std::get<0>(best) == candidate_depth) {
+        if (candidate.score > std::get<1>(best))
+          std::get<1>(best) = candidate.score;
+      }
+      else if (std::get<1>(best) > candidate_depth) {
+        std::get<1>(best) = candidate.score;
+        std::get<0>(best) = candidate.score;
+      }
+
       if (candidate.score <= min_score) {
         // Return if the candidate is bad because the following candidate will
         // not have better score.
+        // LOG(WARNING) << "-------- unsuccessful 1: " << candidate.score << "min_score: " << min_score;
         return Candidate3D::Unsuccessful();
       }
       const float low_resolution_score =
@@ -396,7 +456,7 @@ Candidate3D FastCorrelativeScanMatcher3D::BranchAndBound(
         return best_candidate;
       }
     }
-
+    //LOG(ERROR) << "------------------- unsuccessful 2 min_score: " << min_score;
     // All candidates have good scores but none passes the matching function.
     return Candidate3D::Unsuccessful();
   }
@@ -404,6 +464,16 @@ Candidate3D FastCorrelativeScanMatcher3D::BranchAndBound(
   Candidate3D best_high_resolution_candidate = Candidate3D::Unsuccessful();
   best_high_resolution_candidate.score = min_score;
   for (const Candidate3D& candidate : candidates) {
+    // en add
+    if (std::get<0>(best) == candidate_depth) {
+      if (candidate.score > std::get<1>(best))
+        std::get<1>(best) = candidate.score;
+    }
+    else if (std::get<0>(best) > candidate_depth) {
+      std::get<1>(best) = candidate.score;
+      std::get<0>(best) = candidate_depth;
+    }
+
     if (candidate.score <= min_score) {
       break;
     }
@@ -434,7 +504,7 @@ Candidate3D FastCorrelativeScanMatcher3D::BranchAndBound(
         best_high_resolution_candidate,
         BranchAndBound(search_parameters, discrete_scans,
                        higher_resolution_candidates, candidate_depth - 1,
-                       best_high_resolution_candidate.score));
+                       best_high_resolution_candidate.score, best));
   }
   return best_high_resolution_candidate;
 }
