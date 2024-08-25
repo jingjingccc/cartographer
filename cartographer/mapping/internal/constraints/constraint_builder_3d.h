@@ -97,6 +97,13 @@ class ConstraintBuilder3D {
       const Eigen::Quaterniond& global_node_rotation,
       const Eigen::Quaterniond& global_submap_rotation);
 
+  // en add
+  void MaybeAddGlobalConstraint(
+      const SubmapId& submap_id, const Submap3D* submap, const NodeId& node_id,
+      const TrajectoryNode::Data* const constant_data,
+      const transform::Rigid3d& global_node_pose,
+      const transform::Rigid3d& global_submap_pose);
+
   // Must be called after all computations related to one node have been added.
   void NotifyEndOfNode();
 

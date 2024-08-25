@@ -141,6 +141,39 @@ void ConstraintBuilder3D::MaybeAddGlobalConstraint(
   finish_node_task_->AddDependency(constraint_task_handle);
 }
 
+// en add
+void ConstraintBuilder3D::MaybeAddGlobalConstraint(
+    const SubmapId& submap_id, const Submap3D* const submap,
+    const NodeId& node_id, const TrajectoryNode::Data* const constant_data,
+    const transform::Rigid3d& global_node_pose,
+    const transform::Rigid3d& global_submap_pose) {
+  if ((global_node_pose.translation() - global_submap_pose.translation())
+          .norm() > 2*options_.max_constraint_distance()) {
+    return;
+  }
+  absl::MutexLock locker(&mutex_);
+  if (when_done_) {
+    LOG(WARNING)
+        << "MaybeAddGlobalConstraint was called while WhenDone was scheduled.";
+  }
+  constraints_.emplace_back();
+  kQueueLengthMetric->Set(constraints_.size());
+  auto* const constraint = &constraints_.back();
+  const auto* scan_matcher = DispatchScanMatcherConstruction(submap_id, submap);
+  auto constraint_task = absl::make_unique<common::Task>();
+  constraint_task->SetWorkItem([=]() LOCKS_EXCLUDED(mutex_) {
+    ComputeConstraint(submap_id, node_id, true, /* match_full_submap */
+                      constant_data,
+                      global_node_pose,
+                      global_submap_pose,
+                      *scan_matcher, constraint);
+  });
+  constraint_task->AddDependency(scan_matcher->creation_task_handle);
+  auto constraint_task_handle =
+      thread_pool_->Schedule(std::move(constraint_task));
+  finish_node_task_->AddDependency(constraint_task_handle);
+}
+
 void ConstraintBuilder3D::NotifyEndOfNode() {
   absl::MutexLock locker(&mutex_);
   CHECK(finish_node_task_ != nullptr);

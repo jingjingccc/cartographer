@@ -158,8 +158,11 @@ FastCorrelativeScanMatcher3D::MatchFullSubmap(
       common::RoundToInt(max_point_distance / resolution_ + 0.5f);
   const auto low_resolution_matcher = scan_matching::CreateLowResolutionMatcher(
       low_resolution_hybrid_grid_, &constant_data.low_resolution_point_cloud);
+  // en add
+  //const SearchParameters search_parameters{
+  //    linear_window_size, linear_window_size, M_PI, &low_resolution_matcher};
   const SearchParameters search_parameters{
-      linear_window_size, linear_window_size, M_PI, &low_resolution_matcher};
+      linear_window_size, common::RoundToInt(2 * options_.linear_z_search_window() / resolution_), M_PI, &low_resolution_matcher};
   return MatchWithSearchParameters(
       search_parameters,
       transform::Rigid3f::Rotation(global_node_rotation.cast<float>()),
