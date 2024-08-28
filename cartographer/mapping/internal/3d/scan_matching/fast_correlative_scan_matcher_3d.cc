@@ -162,7 +162,7 @@ FastCorrelativeScanMatcher3D::MatchFullSubmap(
   //const SearchParameters search_parameters{
   //    linear_window_size, linear_window_size, M_PI, &low_resolution_matcher};
   const SearchParameters search_parameters{
-      linear_window_size, common::RoundToInt(2 * options_.linear_z_search_window() / resolution_), M_PI, &low_resolution_matcher};
+      linear_window_size, common::RoundToInt(2 * options_.linear_z_search_window() / resolution_), M_PI/2, &low_resolution_matcher};
   return MatchWithSearchParameters(
       search_parameters,
       transform::Rigid3f::Rotation(global_node_rotation.cast<float>()),
@@ -192,7 +192,7 @@ FastCorrelativeScanMatcher3D::MatchWithSearchParameters(
       search_parameters, discrete_scans, lowest_resolution_candidates,
       precomputation_grid_stack_->max_depth(), min_score, best);
   // en add
-  if (std::get<0>(best) != 10)
+  if (std::get<0>(best) <= 2)
     LOG(WARNING) << "deepest: " << std::get<0>(best) << " score: " << std::get<1>(best);
 
   if (best_candidate.score > min_score) {
@@ -459,7 +459,7 @@ Candidate3D FastCorrelativeScanMatcher3D::BranchAndBound(
         return best_candidate;
       }
     }
-    //LOG(ERROR) << "------------------- unsuccessful 2 min_score: " << min_score;
+    LOG(ERROR) << "------------------- unsuccessful 2 min_score: " << min_score;
     // All candidates have good scores but none passes the matching function.
     return Candidate3D::Unsuccessful();
   }

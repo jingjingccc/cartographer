@@ -148,7 +148,7 @@ void ConstraintBuilder3D::MaybeAddGlobalConstraint(
     const transform::Rigid3d& global_node_pose,
     const transform::Rigid3d& global_submap_pose) {
   if ((global_node_pose.translation() - global_submap_pose.translation())
-          .norm() > 2*options_.max_constraint_distance()) {
+          .norm() > options_.max_constraint_distance()) {
     return;
   }
   absl::MutexLock locker(&mutex_);
@@ -255,7 +255,7 @@ void ConstraintBuilder3D::ComputeConstraint(
             global_node_pose.rotation(), global_submap_pose.rotation(),
             *constant_data, options_.global_localization_min_score());
     if (match_result != nullptr) {
-      LOG(ERROR) << "=== find global solution: " << match_result->score << " submap: " << submap_id << " node: " << node_id << " ===";
+      LOG(ERROR) << "=== find global solution: " << match_result->score << " submap: " << submap_id << " node: " << node_id << " dist: " << (global_node_pose.translation()-global_submap_pose.translation()).norm() << " rot_score: " << match_result->rotational_score << " ===";
       CHECK_GT(match_result->score, options_.global_localization_min_score());
       CHECK_GE(node_id.trajectory_id, 0);
       CHECK_GE(submap_id.trajectory_id, 0);
@@ -275,7 +275,7 @@ void ConstraintBuilder3D::ComputeConstraint(
         options_.min_score());
     if (match_result != nullptr) {
       // We've reported a successful local match.
-      LOG(WARNING) << "=== find local solution: " << match_result->score << " submap: " << submap_id << " node: " << node_id << " ===";
+      LOG(WARNING) << "=== find local solution: " << match_result->score << " submap: " << submap_id << " node: " << node_id << " rot_score: " << match_result->rotational_score << " ===";
       CHECK_GT(match_result->score, options_.min_score());
       kConstraintsFoundMetric->Increment();
       kConstraintScoresMetric->Observe(match_result->score);
