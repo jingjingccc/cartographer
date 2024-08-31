@@ -162,7 +162,7 @@ FastCorrelativeScanMatcher3D::MatchFullSubmap(
   //const SearchParameters search_parameters{
   //    linear_window_size, linear_window_size, M_PI, &low_resolution_matcher};
   const SearchParameters search_parameters{
-      linear_window_size, common::RoundToInt(2 * options_.linear_z_search_window() / resolution_), M_PI/2, &low_resolution_matcher};
+      linear_window_size, common::RoundToInt(2 * options_.linear_z_search_window() / resolution_), M_PI/3, &low_resolution_matcher};
   return MatchWithSearchParameters(
       search_parameters,
       transform::Rigid3f::Rotation(global_node_rotation.cast<float>()),
@@ -330,7 +330,7 @@ std::vector<DiscreteScan3D> FastCorrelativeScanMatcher3D::GenerateDiscreteScans(
   }
   // en add
   if (best_score >= options_.min_rotational_score()){
-    LOG(WARNING) << "amgles best score: " << best_score << " count: " << " search angle: " << search_parameters.angular_search_window;
+    LOG(WARNING) << "angles best score: " << best_score << " count: " << count << " search angle: " << search_parameters.angular_search_window;
   }
   if (search_parameters.angular_search_window==M_PI && cand_set.size()>=50) {
     result.clear();
