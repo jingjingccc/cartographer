@@ -192,7 +192,7 @@ FastCorrelativeScanMatcher3D::MatchWithSearchParameters(
       search_parameters, discrete_scans, lowest_resolution_candidates,
       precomputation_grid_stack_->max_depth(), min_score, best);
   // en add
-  if (std::get<0>(best) <= 2)
+  if (std::get<0>(best) == 0)
     LOG(WARNING) << "deepest: " << std::get<0>(best) << " score: " << std::get<1>(best);
 
   if (best_candidate.score > min_score) {

@@ -873,9 +873,12 @@ void PoseGraph3D::RunOptimization() {
   const auto& submap_data = optimization_problem_->submap_data();
   const auto& node_data = optimization_problem_->node_data();
   for (const int trajectory_id : node_data.trajectory_ids()) {
+    // en add
+    /*
     for (const auto& node : node_data.trajectory(trajectory_id)) {
       data_.trajectory_nodes.at(node.id).global_pose = node.data.global_pose;
     }
+    */
 
     // Extrapolate all point cloud poses that were not included in the
     // 'optimization_problem_' yet.
@@ -885,7 +888,21 @@ void PoseGraph3D::RunOptimization() {
         data_.global_submap_poses_3d, trajectory_id);
     const transform::Rigid3d old_global_to_new_global =
         local_to_new_global * local_to_old_global.inverse();
-
+    
+    // en add
+    if (trajectory_id == 1) {
+      const auto dist = old_global_to_new_global.translation().norm();
+      if (dist > 2) {
+    	LOG(ERROR) << "@@@@@ dist: " << dist << " too big, wait for next optimize. @@@@@";
+    	return;
+      }
+    }
+    
+    // en add
+    for (const auto& node : node_data.trajectory(trajectory_id)) {
+      data_.trajectory_nodes.at(node.id).global_pose = node.data.global_pose;
+    }
+    
     const NodeId last_optimized_node_id =
         std::prev(node_data.EndOfTrajectory(trajectory_id))->id;
     auto node_it =
