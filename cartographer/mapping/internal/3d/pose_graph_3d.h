@@ -259,6 +259,8 @@ class PoseGraph3D : public PoseGraph {
   // Current optimization problem.
   std::unique_ptr<optimization::OptimizationProblem3D> optimization_problem_;
   constraints::ConstraintBuilder3D constraint_builder_;
+  // en add
+  int wait_times = 0;
 
   // Thread pool used for handling the work queue.
   common::ThreadPool* const thread_pool_;

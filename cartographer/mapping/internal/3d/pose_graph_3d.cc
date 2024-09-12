@@ -892,9 +892,15 @@ void PoseGraph3D::RunOptimization() {
     // en add
     if (trajectory_id == 1) {
       const auto dist = old_global_to_new_global.translation().norm();
-      if (dist > 2) {
-    	LOG(ERROR) << "@@@@@ dist: " << dist << " too big, wait for next optimize. @@@@@";
-    	return;
+      if (dist > 2.5) {
+        wait_times++;
+        if (wait_times < 5) {
+          LOG(ERROR) << "@@@@@ dist: " << dist << " too big " << wait_times << " times, wait for next optimize. @@@@@";
+    	  return;
+        }
+        else {
+          wait_times = 0;
+        }
       }
     }
     
